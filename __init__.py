@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os.path import dirname, join
-
 import pyjokes
 
 from adapt.intent import IntentBuilder
@@ -21,23 +19,30 @@ from mycroft.skills.core import MycroftSkill, intent_handler
 from random import choice
 
 
-joke_types = ['chuck', 'neutral']
-
-
 class JokingSkill(MycroftSkill):
     def __init__(self):
         super(JokingSkill, self).__init__(name="JokingSkill")
 
+    def initialize(self):
+        """Register Chuck Norris jokes if supported by language."""
+        lang = self.lang[:2]
+        if 'chuck' in pyjokes.all_jokes[lang]:
+            intent = (IntentBuilder("ChuckJokeIntent").require("Joke")
+                      .require("Chuck"))
+            self.register_intent_handler(intent, self.handle_chuck_joke)
+
     def speak_joke(self, lang, category):
+        """Speak a joke from the specified category."""
         self.speak(pyjokes.get_joke(language=lang, category=category))
 
     @intent_handler(IntentBuilder("JokingIntent").require("Joke"))
     def handle_general_joke(self, message):
-        selected = choice(joke_types)
-        self.speak_joke(self.lang[:-3], selected)
+        """Select a category at random and speak a joke from it."""
+        lang = self.lang[:2]
+        selected = choice(pyjokes.all_jokes[lang])
+        self.speak_joke(lang, selected)
 
-    @intent_handler(IntentBuilder("ChuckJokeIntent").require("Joke")
-                    .require("Chuck"))
+    # Will only be registered if language supports chuck norris jokes
     def handle_chuck_joke(self, message):
         self.speak_joke(self.lang[:-3], 'chuck')
 
@@ -45,11 +50,6 @@ class JokingSkill(MycroftSkill):
                     .require("Neutral"))
     def handle_neutral_joke(self, message):
         self.speak_joke(self.lang[:-3], 'neutral')
-
-    @intent_handler(IntentBuilder("AdultJokeIntent").require("Joke")
-                    .require("Adult"))
-    def handle_adult_joke(self, message):
-        self.speak_joke(self.lang[:-3], 'adult')
 
     def stop(self):
         pass
